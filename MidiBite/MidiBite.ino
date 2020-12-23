@@ -9,6 +9,10 @@ uint8_t g_currentValue = 0;
 
 void setup()
 {
+  //
+  // Initialize I/O
+  //
+  pinMode(led, OUTPUT);
 }
 
 void loop()
@@ -37,7 +41,7 @@ void loop()
   // Outward signs of life
   //
   digitalWrite(led, HIGH);  // turn the LED on (HIGH is the voltage level)
-  delay(200);               // wait for a second
-  digitalWrite(led, LOW);   // turn the LED off by making the voltage LOW
   delay(1000);              // wait for a second
+  digitalWrite(led, LOW);   // turn the LED off by making the voltage LOW
+  delay(200);               // wait for a second
 }
