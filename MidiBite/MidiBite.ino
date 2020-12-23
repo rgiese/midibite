@@ -1,22 +1,66 @@
-/* Grumpycorp Studios MidiBite
- *
- * To build, select MIDI from the "Tools > USB Type" menu
- */
+//
+// Grumpycorp Studios MidiBite
+//
 
-const int led = 13;
+//
+// Configuration
+//
 
-uint8_t g_currentValue = 0;
+// I/O
+uint8_t const c_AnalogInputPin = A9;
+float const c_AnalogInput_MinValue = 500;
+float const c_AnalogInput_MaxValue = 1000;
+
+uint8_t const c_LEDPin = 13;
+
+// Midi
+uint8_t const c_MidiChannel = 0x0;
+uint8_t const c_MidiCC = 0x55;
+
+// Timing
+unsigned long const c_LoopDesiredCadence_msec = 50;
+
+
+//
+// State
+//
+
+uint32_t g_LoopIteration = 0;
+uint8_t g_LastValueSent = 0;
+
+//
+// Setup
+//
 
 void setup()
 {
   //
   // Initialize I/O
   //
-  pinMode(led, OUTPUT);
+  pinMode(c_LEDPin, OUTPUT);
 }
+
+//
+// Helpers
+//
+
+namespace std
+{
+template <class T>
+constexpr const T& clamp(const T& v, const T& lo, const T& hi)
+{
+  return (v < lo) ? lo : (hi < v) ? hi : v;
+}
+}  // namespace std
+
+//
+// Loop
+//
 
 void loop()
 {
+  unsigned long const loopStartTime_msec = millis();
+
   //
   // Process incoming MIDI
   //
@@ -30,18 +74,62 @@ void loop()
   //
   // Process outgoing MIDI
   //
-  Serial.print("Current controller value: ");
-  Serial.println(g_currentValue);
 
-  usbMIDI.sendControlChange(0x55, g_currentValue, 1);
+  bool fDidSendMidi = false;
+  {
+    float const analogValue = analogRead(c_AnalogInputPin);
 
-  ++g_currentValue;
+    float const value0to100 =
+        (std::clamp(analogValue, c_AnalogInput_MinValue, c_AnalogInput_MaxValue) - c_AnalogInput_MinValue) /
+        (c_AnalogInput_MaxValue - c_AnalogInput_MinValue);
+
+    uint8_t const c_MidiValue_Range = 127;  // 7 bit value
+    uint8_t const midiValue = static_cast<uint8_t>(value0to100 * c_MidiValue_Range);
+
+    if (false)
+    {
+      Serial.print("Analog: ");
+      Serial.print(analogValue);
+      Serial.print(" -> MIDI value: ");
+      Serial.println(midiValue);
+    }
+
+    // Rate limit
+    if ((midiValue != g_LastValueSent))
+    {
+      usbMIDI.sendControlChange(c_MidiCC, midiValue, c_MidiChannel);
+
+      g_LastValueSent = midiValue;
+      fDidSendMidi = true;
+    }
+  }
 
   //
   // Outward signs of life
   //
-  digitalWrite(led, HIGH);  // turn the LED on (HIGH is the voltage level)
-  delay(1000);              // wait for a second
-  digitalWrite(led, LOW);   // turn the LED off by making the voltage LOW
-  delay(200);               // wait for a second
+
+  digitalWrite(c_LEDPin, ((g_LoopIteration % 20 == 0) || fDidSendMidi) ? HIGH : LOW);
+
+  //
+  // Delay
+  //
+
+  while (true)
+  {
+    // (Carefully phrased to deal with rollovers)
+    unsigned long const currentTime_msec = millis();
+    unsigned long const timeSinceLastLoopStart_msec = currentTime_msec - loopStartTime_msec;
+
+    if (timeSinceLastLoopStart_msec > c_LoopDesiredCadence_msec)
+    {
+      // No further delay required
+      break;
+    }
+
+    unsigned long const remainingTotalDelay_msec = c_LoopDesiredCadence_msec - timeSinceLastLoopStart_msec;
+
+    delay(remainingTotalDelay_msec);
+  }
+
+  ++g_LoopIteration;
 }
