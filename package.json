@@ -1,0 +1,22 @@
+{
+  "name": "@grumpycorp/midibite",
+  "private": true,
+  "description": "MidiBite",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/rgiese/midibite.git"
+  },
+  "license": "CC-BY-NC-SA-4.0",
+  "author": "robin@grumpycorp.com",
+  "scripts": {
+    "format:fix": "cross-var prettier --write $npm_package_config_prettierglob & clang-format --glob=MidiBite/**/*.{c,cpp,h,hpp,ino} -i"
+  },
+  "config": {
+    "prettierglob": "{.,./**}/*.{json,md}"
+  },
+  "devDependencies": {
+    "clang-format": "^1.4.0",
+    "cross-var": "^1.1.0",
+    "prettier": "^1.19.1"
+  }
+}
